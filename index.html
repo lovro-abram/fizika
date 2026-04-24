@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Optična simulacija: Preslikava čez lečo | Konveksna / Konkavna leča</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none; /* better UX for sliders, prevents accidental text select */
+        }
+
+        body {
+            background: linear-gradient(145deg, #eef2f7 0%, #d9e0e8 100%);
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 24px;
+        }
+
+        /* Modern card container */
+        .sim-card {
+            max-width: 1300px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(0px);
+            border-radius: 2.5rem;
+            box-shadow: 0 25px 45px -12px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+
+        /* Canvas area */
+        .canvas-container {
+            background: #fefefe;
+            padding: 20px 20px 0 20px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05), 0 10px 20px -5px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+
+        /* Control panel modern */
+        .controls {
+            padding: 1.8rem 2rem 2rem 2rem;
+            background: #ffffffcc;
+            backdrop-filter: blur(2px);
+        }
+
+        .control-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            align-items: flex-end;
+            justify-content: space-between;
+            margin-bottom: 1.8rem;
+        }
+
+        .lens-toggle {
+            background: #f1f5f9;
+            border-radius: 2rem;
+            padding: 0.25rem;
+            display: inline-flex;
+            gap: 0.5rem;
+            box-shadow: inset 0 1px 2px #00000010, 0 2px 4px #ffffff80;
+        }
+
+        .lens-btn {
+            border: none;
+            padding: 0.6rem 1.4rem;
+            font-weight: 600;
+            font-size: 1rem;
+            border-radius: 2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: transparent;
+            color: #2c3e66;
+            font-family: inherit;
+        }
+
+        .lens-btn.active {
+            background: #2c3e66;
+            color: white;
+            box-shadow: 0 4px 10px rgba(44,62,102,0.3);
+        }
+
+        .slider-panel {
+            flex: 2;
+            min-width: 180px;
+        }
+
+        .slider-panel label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #1e293b;
+            margin-bottom: 0.4rem;
+            letter-spacing: -0.2px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            -webkit-appearance: none;
+            background: #cbd5e1;
+            border-radius: 10px;
+            outline: none;
+        }
+
+        input[type="range"]:focus {
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #2c3e66;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            border: 2px solid white;
+        }
+
+        .value-display {
+            background: #eef2ff;
+            padding: 0.2rem 0.8rem;
+            border-radius: 2rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            font-family: monospace;
+            color: #0f172a;
+        }
+
+        .info-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: space-between;
+            margin-top: 1.2rem;
+            padding-top: 1rem;
+            border-top: 1px dashed #cbd5e1;
+            font-size: 0.9rem;
+        }
+
+        .info-card {
+            background: #f8fafc;
+            border-radius: 1.2rem;
+            padding: 0.6rem 1.2rem;
+            flex: 1;
+            text-align: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .info-value {
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #0f172a;
+        }
+
+        .warning {
+            color: #b91c1c;
+            background: #fee2e2;
+            border-radius: 2rem;
+            padding: 0.2rem 0.8rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        h3 {
+            font-size: 1rem;
+            margin: 0 0 0.5rem 0;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        footer {
+            font-size: 0.7rem;
+            text-align: center;
+            margin-top: 1rem;
+            color: #64748b;
+        }
+
+        @media (max-width: 700px) {
+            .controls { padding: 1.2rem; }
+            .control-group { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+</head>
+<body>
+<div class="sim-card">
+    <div class="canvas-container">
+        <canvas id="lensCanvas" width="1000" height="480" style="width:100%; height:auto; max-width:1000px; aspect-ratio:1000/480"></canvas>
+    </div>
+    <div class="controls">
+        <div class="control-group">
+            <div class="lens-toggle" id="lensToggleGroup">
+                <button id="btnConvex" class="lens-btn active">🔮 Konveksna (zbiralna)</button>
+                <button id="btnConcave" class="lens-btn">🌀 Konkavna (razpršilna)</button>
+            </div>
+            <div class="slider-panel">
+                <label>📏 Oddaljenost predmeta <span id="objectDistVal" class="value-display">150 px</span></label>
+                <input type="range" id="objectDistSlider" min="25" max="320" step="1" value="150">
+            </div>
+            <div class="slider-panel">
+                <label>📐 Višina predmeta <span id="objectHeightVal" class="value-display">45 px</span></label>
+                <input type="range" id="objectHeightSlider" min="15" max="85" step="1" value="45">
+            </div>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-card"><div class="info-label">Goriščna razdalja |f|</div><div id="fValue" class="info-value">100 px</div></div>
+            <div class="info-card"><div class="info-label">Razdalja slike (sᵢ)</div><div id="imageDistInfo" class="info-value">---</div></div>
+            <div class="info-card"><div class="info-label">Povečava (m)</div><div id="magInfo" class="info-value">---</div></div>
+            <div class="info-card"><div class="info-label">Tip slike</div><div id="imageTypeInfo" class="info-value">---</div></div>
+        </div>
+        <footer>✨ Dva žarka: vzporedni (⇢ skozi gorišče) in središčni (skozi optično središče) | Virtualna slika = črtkano</footer>
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ------ DOM elementi ------
+        const canvas = document.getElementById('lensCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // gumbi
+        const convexBtn = document.getElementById('btnConvex');
+        const concaveBtn = document.getElementById('btnConcave');
+        const objDistSlider = document.getElementById('objectDistSlider');
+        const objHeightSlider = document.getElementById('objectHeightSlider');
+        const objDistVal = document.getElementById('objectDistVal');
+        const objHeightVal = document.getElementById('objectHeightVal');
+        const fValueSpan = document.getElementById('fValue');
+        const imageDistInfo = document.getElementById('imageDistInfo');
+        const magInfoSpan = document.getElementById('magInfo');
+        const imageTypeSpan = document.getElementById('imageTypeInfo');
+        
+        // konstante zaslona
+        let width = 1000;
+        let height = 480;
+        canvas.width = width;
+        canvas.height = height;
+        
+        // optična os (y central)
+        const axisY = height / 2;    // 240
+        let lensX = width / 2;        // 500
+        
+        // Fizikalne nastavitve (v px)
+        let focalLenAbs = 100;         // |f| = 100px
+        let isConvex = true;           // true = konveksna (zbiralna), false = konkavna (razpršilna)
+        let f = focalLenAbs;           // za konveksno +100, za konkavno -100
+        
+        // Predmet: razdalja od leče (pozitivna, levo od leče) -> s_o > 0
+        let objectDistance = 150;       // oddaljenost od leče v px (s_o)
+        let objectHeight = 45;          // višina od optične osi navzgor (px)
+        
+        // izračunane vrednosti slike
+        let s_i = 0;            // razdalja slike (pozitivna desno, negativna levo)
+        let magnification = 0;
+        let imageHeight = 0;
+        let imageSide = "real"; // real/virtual
+        let imageInverted = false;
+        let validImage = true;
+        let warningMsg = "";
+        
+        // ---- pomožne funkcije ----
+        function updateFfromLensType() {
+            f = isConvex ? focalLenAbs : -focalLenAbs;
+            fValueSpan.innerText = `${focalLenAbs} px  ${isConvex ? '(zbiralna)' : '(razpršilna)'}`;
+        }
+        
+        // izračun slike na podlagi tanke leče: 1/f = 1/s_o + 1/s_i  (s_i = 1/(1/f - 1/s_o))
+        function computeImage() {
+            let so = objectDistance;     // >0
+            let focal = f;
+            if (so <= 0) return;
+            
+            // formula za tanko lečo
+            if (Math.abs(1/focal - 1/so) < 1e-8) {
+                // pri konveksni in objectDistance == f -> slika v neskončnosti
+                if (isConvex && Math.abs(so - focalLenAbs) < 0.5) {
+                    validImage = false;
+                    warningMsg = "❌ Predmet v gorišču: slika v neskončnosti";
+                    s_i = (focal > 0 ? 1e6 : -1e6);
+                    magnification = 0;
+                    imageHeight = 0;
+                    imageSide = "nedoločeno";
+                    return;
+                }
+                validImage = true;
+            }
+            
+            let si = 1 / ((1/focal) - (1/so));
+            s_i = si;
+            
+            // preprečimo ekstremne vrednosti (če je preblizu f)
+            if (Math.abs(s_i) > 1500) {
+                validImage = false;
+                warningMsg = "⚠️ Slika zelo daleč (skoraj neskončnost)";
+                magnification = 0;
+                imageHeight = 0;
+                return;
+            }
+            validImage = true;
+            warningMsg = "";
+            
+            magnification = -s_i / so;
+            imageHeight = Math.abs(magnification) * objectHeight;
+            imageInverted = magnification < 0;
+            
+            // določimo tip slike
+            if (!isConvex && s_i < 0) {
+                imageSide = "virtualna (pokončna)";
+            } else if (isConvex && s_i > 0) {
+                imageSide = "realna" + (imageInverted ? " (obrnjena)" : " (pokončna)");
+            } else if (isConvex && s_i < 0) {
+                imageSide = "virtualna (pokončna)";
+            } else if (!isConvex && s_i > 0) {
+                // pri konkavni teoretično s_i vedno negativno, vendar če bi uporabnik dal negativen predmet? ne. Dodamo varnost.
+                imageSide = "virtualna (nenavadna)";
+            } else {
+                imageSide = "virtualna";
+            }
+            
+            if (!isConvex) imageSide = "virtualna (pokončna, pomanjšana)";
+            if (isConvex && s_i > 0 && imageInverted) imageSide = "realna (obrnjena)";
+            if (isConvex && s_i > 0 && !imageInverted) imageSide = "realna (pokončna)";
+        }
+        
+        // posodobi prikaz podatkov
+        function updateInfoDisplay() {
+            if (!validImage) {
+                imageDistInfo.innerText = warningMsg;
+                magInfoSpan.innerText = "---";
+                imageTypeSpan.innerText = "nedoločeno";
+                return;
+            }
+            let siPx = Math.abs(s_i).toFixed(1);
+            let sideText = (s_i > 0) ? `desno (${siPx} px)` : (s_i < 0) ? `levo (${Math.abs(s_i).toFixed(1)} px)` : "0";
+            imageDistInfo.innerHTML = `${sideText} ${!isConvex && s_i<0 ? '🟣 virtual' : (s_i>0 ? 'real' : 'virtual')}`;
+            let magAbs = Math.abs(magnification).toFixed(2);
+            magInfoSpan.innerText = `${magnification > 0 ? '+' : ''}${magnification.toFixed(2)}  (${magAbs}x)`;
+            let typeDetail = "";
+            if(!validImage) typeDetail = warningMsg;
+            else if(isConvex && s_i > 0) typeDetail = `Realna ${imageInverted ? 'obrnjena' : 'pokončna'}`;
+            else if(isConvex && s_i < 0) typeDetail = `Virtualna (pokončna)`;
+            else if(!isConvex) typeDetail = `Virtualna (pokončna, pomanjšana)`;
+            else typeDetail = imageSide;
+            imageTypeSpan.innerText = typeDetail;
+        }
+        
+        // risanje optične osi, leče, gorišč in 2F
+        function drawOpticalBench() {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(30, axisY);
+            ctx.lineTo(width-30, axisY);
+            ctx.strokeStyle = '#6c757d';
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([]);
+            ctx.stroke();
+            // puščice
+            ctx.beginPath();
+            ctx.moveTo(width-30, axisY-4);
+            ctx.lineTo(width-22, axisY);
+            ctx.lineTo(width-30, axisY+4);
+            ctx.fillStyle = '#5a626e';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(30, axisY-4);
+            ctx.lineTo(22, axisY);
+            ctx.lineTo(30, axisY+4);
+            ctx.fill();
+            
+            // oznake leče (simbol)
+            ctx.setLineDash([]);
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            if(isConvex) {
+                // konveksna: dve krivulji
+                ctx.beginPath();
+                ctx.ellipse(lensX, axisY, 12, 38, 0, 0, Math.PI*2);
+                ctx.strokeStyle = '#1e466e';
+                ctx.fillStyle = '#cbdffc80';
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(lensX, axisY-42);
+                ctx.lineTo(lensX, axisY+42);
+                ctx.strokeStyle = '#0f2b44';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            } else {
+                // konkavna: vbočena oblika
+                ctx.beginPath();
+                ctx.ellipse(lensX, axisY, 12, 38, 0, 0, Math.PI*2);
+                ctx.fillStyle = '#e2e8f0c0';
+                ctx.fill();
+                ctx.strokeStyle = '#1f4a6e';
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(lensX, axisY-42);
+                ctx.lineTo(lensX, axisY+42);
+                ctx.stroke();
+                // notranje črtice
+                ctx.beginPath();
+                ctx.ellipse(lensX, axisY, 4, 30, 0, 0, Math.PI*2);
+                ctx.fillStyle = '#ffffffb0';
+                ctx.fill();
+            }
+            // označitev optičnega središča
+            ctx.beginPath();
+            ctx.arc(lensX, axisY, 3, 0, 2*Math.PI);
+            ctx.fillStyle = '#2c3e66';
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.arc(lensX, axisY, 1.5, 0, 2*Math.PI);
+            ctx.fill();
+            
+            // GORIŠČA in 2F (absolutna razdalja)
+            let absF = focalLenAbs;
+            let fLeftX = lensX - absF;
+            let fRightX = lensX + absF;
+            let twoFLeft = lensX - 2*absF;
+            let twoFRight = lensX + 2*absF;
+            
+            ctx.font = "500 13px 'Segoe UI'";
+            ctx.fillStyle = '#2d4a6e';
+            ctx.setLineDash([5, 5]);
+            ctx.lineWidth = 1;
+            // risanje navpičnih črt za gorišča in 2F (samo markacije)
+            ctx.setLineDash([4, 6]);
+            ctx.beginPath();
+            ctx.moveTo(fLeftX, axisY-15);
+            ctx.lineTo(fLeftX, axisY+15);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(fRightX, axisY-15);
+            ctx.lineTo(fRightX, axisY+15);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(twoFLeft, axisY-10);
+            ctx.lineTo(twoFLeft, axisY+10);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(twoFRight, axisY-10);
+            ctx.lineTo(twoFRight, axisY+10);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#1f4970';
+            ctx.fillText("F", fLeftX-8, axisY-6);
+            ctx.fillText("F'", fRightX+2, axisY-6);
+            ctx.fillText("2F", twoFLeft-12, axisY-6);
+            ctx.fillText("2F'", twoFRight+5, axisY-6);
+            ctx.fillStyle = '#4a627a';
+            ctx.font = "11px monospace";
+            if(isConvex){
+                ctx.fillText("zbiralna", lensX-30, axisY-50);
+            } else {
+                ctx.fillText("razpršilna", lensX-35, axisY-50);
+            }
+        }
+        
+        // risanje predmeta (rdeča puščica)
+        function drawObject() {
+            let objX = lensX - objectDistance;
+            if(objX < 15) objX = 15;
+            let tipY = axisY - objectHeight;
+            // palica predmeta
+            ctx.beginPath();
+            ctx.moveTo(objX, axisY);
+            ctx.lineTo(objX, tipY);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#c7254e';
+            ctx.stroke();
+            // puščica
+            ctx.beginPath();
+            ctx.moveTo(objX-5, tipY+5);
+            ctx.lineTo(objX, tipY);
+            ctx.lineTo(objX+5, tipY+5);
+            ctx.fillStyle = '#c7254e';
+            ctx.fill();
+            ctx.fillStyle = '#b91c1c';
+            ctx.font = "bold 12px 'Segoe UI'";
+            ctx.fillText("predmet", objX-15, tipY-4);
+        }
+        
+        // risanje slike (real/virtual, polna/črtkana)
+        function drawImage() {
+            if(!validImage || Math.abs(imageHeight) < 0.5 || Math.abs(s_i) > 1400) return;
+            let imgX = lensX + s_i;
+            if(imgX < 10 || imgX > width-10) return;
+            let imgTipY = axisY - (imageInverted ? -imageHeight : imageHeight);
+            // če je virtualna slika (s_i < 0) ali konkavna -> črtkano, drugače realna polna
+            let isVirtualImage = (s_i < 0) || (!isConvex);
+            ctx.save();
+            if(isVirtualImage) {
+                ctx.setLineDash([8, 6]);
+                ctx.strokeStyle = '#2c6e9e';
+                ctx.fillStyle = '#2c6e9e';
+            } else {
+                ctx.setLineDash([]);
+                ctx.strokeStyle = '#0f6b3a';
+                ctx.fillStyle = '#0f6b3a';
+            }
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(imgX, axisY);
+            ctx.lineTo(imgX, imgTipY);
+            ctx.stroke();
+            // puščica
+            ctx.beginPath();
+            ctx.moveTo(imgX-5, imgTipY+5);
+            ctx.lineTo(imgX, imgTipY);
+            ctx.lineTo(imgX+5, imgTipY+5);
+            ctx.fill();
+            ctx.setLineDash([]);
+            ctx.font = "italic 11px 'Segoe UI'";
+            ctx.fillStyle = isVirtualImage ? '#2b6a9b' : '#1c6e42';
+            ctx.fillText(isVirtualImage ? "slika (virtualna)" : "slika (realna)", imgX+5, imgTipY-6);
+            ctx.restore();
+        }
+        
+        // risanje dveh žarkov: 1) vzporedni žarek -> gre skozi gorišče (ali navidezno iz gorišča)
+        // 2) središčni žarek (skozi optično središče)
+        function drawRays() {
+            if(!validImage) return;
+            // koordinate object tip
+            let objX = lensX - objectDistance;
+            let objTip = { x: objX, y: axisY - objectHeight };
+            // koordinate image tip (če obstaja)
+            let imgX = lensX + s_i;
+            let imgTipY = axisY - (imageInverted ? -imageHeight : imageHeight);
+            let isVirtual = (s_i < 0) || (!isConvex);
+            
+            // 1. VZPOREDNI ŽAREK: od vrha predmeta vodoravno do leče, nato lom skozi gorišče (konveksna) / navidez od gorišča (konkavna)
+            // paralelni vpad: od (objTip.x, objTip.y) do (lensX, objTip.y)
+            let parallelIncidentEnd = { x: lensX, y: objTip.y };
+            // izračunamo lomljeni žarek: za konveksno: pot skozi desno gorišče (F_right)
+            // za konkavno: lomljeni žarek se širi, kot da prihaja iz levega gorišča (F_left)
+            let absF = focalLenAbs;
+            let focalRight = { x: lensX + absF, y: axisY };
+            let focalLeft = { x: lensX - absF, y: axisY };
+            
+            ctx.save();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#e6752e';
+            ctx.fillStyle = '#e6752e';
+            ctx.setLineDash([]);
+            // nariši prvi segment (vpadni)
+            ctx.beginPath();
+            ctx.moveTo(objTip.x, objTip.y);
+            ctx.lineTo(parallelIncidentEnd.x, parallelIncidentEnd.y);
+            ctx.stroke();
+            
+            // lomljeni del
+            if(isConvex) {
+                // žarek gre skozi desno gorišče (realno)
+                ctx.beginPath();
+                ctx.moveTo(lensX, objTip.y);
+                ctx.lineTo(focalRight.x, focalRight.y);
+                ctx.stroke();
+                // če slika realna, podaljšek do slike? Preprosto prikažemo do gorišča, ampak žarek se nadaljuje proti sliki.
+                // Dodamo pikčasto črto od gorišča proti sliki (za ilustracijo, da pride v sliko)
+                if(!isVirtual && imgX > lensX && Math.abs(imgX - focalRight.x) < 300){
+                    ctx.setLineDash([6, 8]);
+                    ctx.beginPath();
+                    ctx.moveTo(focalRight.x, focalRight.y);
+                    ctx.lineTo(imgX, imgTipY);
+                    ctx.stroke();
+                } else if(isVirtual && s_i < 0){
+                    // virtualna slika: podaljšek nazaj
+                    ctx.setLineDash([6, 6]);
+                    ctx.beginPath();
+                    ctx.moveTo(lensX, objTip.y);
+                    let dirX = focalRight.x - lensX;
+                    let dirY = focalRight.y - objTip.y;
+                    let len = 120;
+                    let extendedX = lensX + dirX*1.5;
+                    let extendedY = objTip.y + dirY*1.5;
+                    ctx.lineTo(extendedX, extendedY);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(extendedX, extendedY);
+                    ctx.lineTo(imgX, imgTipY);
+                    ctx.stroke();
+                }
+            } 
+            else { // konkavna
+                // vzporedni žarek se lomi tako, da se zdi, da prihaja iz levega gorišča
+                ctx.beginPath();
+                ctx.moveTo(lensX, objTip.y);
+                // smer od lečne točke proti navideznemu izvoru (focalLeft)
+                let dx = focalLeft.x - lensX;
+                let dy = focalLeft.y - objTip.y;
+                let ex = lensX + dx*1.6;
+                let ey = objTip.y + dy*1.6;
+                ctx.lineTo(ex, ey);
+                ctx.stroke();
+                ctx.setLineDash([6, 6]);
+                ctx.beginPath();
+                ctx.moveTo(ex, ey);
+                ctx.lineTo(imgX, imgTipY);
+                ctx.stroke();
+            }
+            
+            // 2. SREDIŠČNI ŽAREK: gre nezlomljeno skozi optično središče (lensX, axisY)
+            ctx.setLineDash([]);
+            ctx.strokeStyle = '#2c7da0';
+            ctx.lineWidth = 2;
+            // od vrha predmeta do centra leče
+            ctx.beginPath();
+            ctx.moveTo(objTip.x, objTip.y);
+            ctx.lineTo(lensX, axisY);
+            ctx.stroke();
+            // nadaljevanje skozi lečo v isti smeri
+            let dirVecX = lensX - objTip.x;
+            let dirVecY = axisY - objTip.y;
+            let norm = Math.hypot(dirVecX, dirVecY);
+            if(norm > 0.01){
+                let unitX = dirVecX / norm;
+                let unitY = dirVecY / norm;
+                let lengthOut = 280;
+                let outEndX = lensX + unitX * lengthOut;
+                let outEndY = axisY + unitY * lengthOut;
+                ctx.beginPath();
+                ctx.moveTo(lensX, axisY);
+                ctx.lineTo(outEndX, outEndY);
+                ctx.stroke();
+                
+                // povežemo z virtualno/realno sliko
+                if(!isVirtual && s_i > 0 && Math.abs(imgX - lensX) < 500){
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(outEndX, outEndY);
+                    ctx.lineTo(imgX, imgTipY);
+                    ctx.stroke();
+                } else if(isVirtual && s_i < 0){
+                    // virtualna slika: podaljšek vzvratno
+                    ctx.setLineDash([6, 6]);
+                    ctx.beginPath();
+                    ctx.moveTo(lensX, axisY);
+                    let backX = lensX - unitX * 180;
+                    let backY = axisY - unitY * 180;
+                    ctx.lineTo(backX, backY);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(backX, backY);
+                    ctx.lineTo(imgX, imgTipY);
+                    ctx.stroke();
+                }
+            }
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+        
+        // glavna risalna funkcija
+        function redrawAll() {
+            if(!canvas || !ctx) return;
+            ctx.clearRect(0, 0, width, height);
+            // bele ozadje + rahla mreža
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+            ctx.save();
+            // grid pomožne črte (nevsiljivo)
+            ctx.beginPath();
+            ctx.strokeStyle = '#eef2f8';
+            ctx.lineWidth = 0.6;
+            for(let y = 60; y < height; y+= 60){
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            for(let x = 80; x < width; x+=80){
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            drawOpticalBench();
+            drawObject();
+            if(validImage && Math.abs(imageHeight) > 0.5 && Math.abs(s_i) < 1400) {
+                drawImage();
+                drawRays();
+            } else if(!validImage){
+                ctx.font = "500 14px 'Segoe UI'";
+                ctx.fillStyle = "#b91c1c";
+                ctx.shadowBlur = 0;
+                ctx.fillText(warningMsg || "Slika ni definirana (predmet v gorišču?)", lensX-150, axisY-70);
+            }
+            ctx.restore();
+        }
+        
+        // posodobi vse parametre iz kontrolnikov
+        function refreshFromUI() {
+            objectDistance = parseFloat(objDistSlider.value);
+            objectHeight = parseFloat(objHeightSlider.value);
+            objDistVal.innerText = objectDistance + " px";
+            objHeightVal.innerText = objectHeight + " px";
+            computeImage();
+            updateInfoDisplay();
+            redrawAll();
+        }
+        
+        // event listenerji
+        function setLensType(convex) {
+            isConvex = convex;
+            if(convex){
+                convexBtn.classList.add('active');
+                concaveBtn.classList.remove('active');
+            } else {
+                concaveBtn.classList.add('active');
+                convexBtn.classList.remove('active');
+            }
+            updateFfromLensType();
+            refreshFromUI();
+        }
+        
+        convexBtn.addEventListener('click', () => setLensType(true));
+        concaveBtn.addEventListener('click', () => setLensType(false));
+        objDistSlider.addEventListener('input', () => refreshFromUI());
+        objHeightSlider.addEventListener('input', () => refreshFromUI());
+        
+        // posodobi ob spremembi velikosti? ročno določimo canvas
+        window.addEventListener('resize', () => { redrawAll(); });
+        
+        // inicializacija
+        updateFfromLensType();
+        refreshFromUI();
+    })();
+</script>
+</body>
+</html>
