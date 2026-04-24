@@ -289,31 +289,60 @@
         
         // izračun slike na podlagi tanke leče: 1/f = 1/s_o + 1/s_i  (s_i = 1/(1/f - 1/s_o))
         function computeImage() {
-            let so = objectDistance;     // > 0 (razdalja predmeta od leče)
-            let focal = f;               // f > 0 za zbiralno, f < 0 za razpršilno
+            let so = objectDistance;     // >0
+            let focal = f;
+            if (so <= 0) return;
             
-            if (Math.abs(so - focal) < 1) {
+            // formula za tanko lečo
+            if (Math.abs(1/focal - 1/so) < 1e-8) {
+                // pri konveksni in objectDistance == f -> slika v neskončnosti
+                if (isConvex && Math.abs(so - focalLenAbs) < 0.5) {
+                    validImage = false;
+                    warningMsg = "❌ Predmet v gorišču: slika v neskončnosti";
+                    s_i = (focal > 0 ? 1e6 : -1e6);
+                    magnification = 0;
+                    imageHeight = 0;
+                    imageSide = "nedoločeno";
+                    return;
+                }
+                validImage = true;
+            }
+            
+            let si = 1 / ((1/focal) - (1/so));
+            s_i = si;
+            
+            // preprečimo ekstremne vrednosti (če je preblizu f)
+            if (Math.abs(s_i) > 1500) {
                 validImage = false;
-                warningMsg = isConvex ? "❌ Predmet v gorišču: slika v neskončnosti" : "❌ Napaka pri izračunu";
-                s_i = Infinity;
-                magnification = Infinity;
+                warningMsg = "⚠️ Slika zelo daleč (skoraj neskončnost)";
+                magnification = 0;
                 imageHeight = 0;
                 return;
             }
-
-            s_i = 1 / ((1 / focal) - (1 / so));
-            
-            if (Math.abs(s_i) > 2000) {
-                validImage = false;
-                warningMsg = "⚠️ Slika je zelo daleč";
-                return;
-            }
-
             validImage = true;
             warningMsg = "";
+            
             magnification = -s_i / so;
             imageHeight = Math.abs(magnification) * objectHeight;
             imageInverted = magnification < 0;
+            
+            // določimo tip slike
+            if (!isConvex && s_i < 0) {
+                imageSide = "virtualna (pokončna)";
+            } else if (isConvex && s_i > 0) {
+                imageSide = "realna" + (imageInverted ? " (obrnjena)" : " (pokončna)");
+            } else if (isConvex && s_i < 0) {
+                imageSide = "virtualna (pokončna)";
+            } else if (!isConvex && s_i > 0) {
+                // pri konkavni teoretično s_i vedno negativno, vendar če bi uporabnik dal negativen predmet? ne. Dodamo varnost.
+                imageSide = "virtualna (nenavadna)";
+            } else {
+                imageSide = "virtualna";
+            }
+            
+            if (!isConvex) imageSide = "virtualna (pokončna, pomanjšana)";
+            if (isConvex && s_i > 0 && imageInverted) imageSide = "realna (obrnjena)";
+            if (isConvex && s_i > 0 && !imageInverted) imageSide = "realna (pokončna)";
         }
         
         // posodobi prikaz podatkov
@@ -324,20 +353,18 @@
                 imageTypeSpan.innerText = "nedoločeno";
                 return;
             }
-
             let siPx = Math.abs(s_i).toFixed(1);
-            let lokacija = s_i > 0 ? "desno" : "levo";
-            let tip = s_i > 0 ? "realna" : "virtualna";
-
-            imageDistInfo.innerHTML = `${lokacija} (${siPx} px) <span style="color:${s_i > 0 ? '#1c6e42' : '#2b6a9b'}">${tip}</span>`;
-
-            let magValue = magnification.toFixed(2);
+            let sideText = (s_i > 0) ? `desno (${siPx} px)` : (s_i < 0) ? `levo (${Math.abs(s_i).toFixed(1)} px)` : "0";
+            imageDistInfo.innerHTML = `${sideText} ${!isConvex && s_i<0 ? '🟣 virtual' : (s_i>0 ? 'real' : 'virtual')}`;
             let magAbs = Math.abs(magnification).toFixed(2);
-            let povecavaOpis = magAbs > 1 ? "povečana" : (magAbs < 1 ? "pomanjšana" : "enaka");
-            magInfoSpan.innerText = `${magValue}x (${povecavaOpis})`;
-
-            let orientacija = imageInverted ? "obrnjena" : "pokončna";
-            imageTypeSpan.innerText = `${tip.charAt(0).toUpperCase() + tip.slice(1)}, ${orientacija}, ${povecavaOpis}`;
+            magInfoSpan.innerText = `${magnification > 0 ? '+' : ''}${magnification.toFixed(2)}  (${magAbs}x)`;
+            let typeDetail = "";
+            if(!validImage) typeDetail = warningMsg;
+            else if(isConvex && s_i > 0) typeDetail = `Realna ${imageInverted ? 'obrnjena' : 'pokončna'}`;
+            else if(isConvex && s_i < 0) typeDetail = `Virtualna (pokončna)`;
+            else if(!isConvex) typeDetail = `Virtualna (pokončna, pomanjšana)`;
+            else typeDetail = imageSide;
+            imageTypeSpan.innerText = typeDetail;
         }
         
         // risanje optične osi, leče, gorišč in 2F
@@ -365,39 +392,39 @@
             
             // oznake leče (simbol)
             ctx.setLineDash([]);
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
             if(isConvex) {
-                // konveksna: lečasta oblika
+                // konveksna: dve krivulji
                 ctx.beginPath();
-                ctx.moveTo(lensX, axisY - 60);
-                ctx.quadraticCurveTo(lensX + 20, axisY, lensX, axisY + 60);
-                ctx.quadraticCurveTo(lensX - 20, axisY, lensX, axisY - 60);
+                ctx.ellipse(lensX, axisY, 12, 38, 0, 0, Math.PI*2);
                 ctx.strokeStyle = '#1e466e';
                 ctx.fillStyle = '#cbdffc80';
                 ctx.fill();
                 ctx.stroke();
-                // puščice na vrhu/dnu
                 ctx.beginPath();
-                ctx.moveTo(lensX - 5, axisY - 55); ctx.lineTo(lensX, axisY - 65); ctx.lineTo(lensX + 5, axisY - 55);
-                ctx.moveTo(lensX - 5, axisY + 55); ctx.lineTo(lensX, axisY + 65); ctx.lineTo(lensX + 5, axisY + 55);
+                ctx.moveTo(lensX, axisY-42);
+                ctx.lineTo(lensX, axisY+42);
+                ctx.strokeStyle = '#0f2b44';
+                ctx.lineWidth = 2;
                 ctx.stroke();
             } else {
                 // konkavna: vbočena oblika
                 ctx.beginPath();
-                ctx.moveTo(lensX - 15, axisY - 60);
-                ctx.lineTo(lensX + 15, axisY - 60);
-                ctx.quadraticCurveTo(lensX, axisY, lensX + 15, axisY + 60);
-                ctx.lineTo(lensX - 15, axisY + 60);
-                ctx.quadraticCurveTo(lensX, axisY, lensX - 15, axisY - 60);
-                ctx.strokeStyle = '#1e466e';
-                ctx.fillStyle = '#e2e8f080';
+                ctx.ellipse(lensX, axisY, 12, 38, 0, 0, Math.PI*2);
+                ctx.fillStyle = '#e2e8f0c0';
                 ctx.fill();
+                ctx.strokeStyle = '#1f4a6e';
                 ctx.stroke();
-                // puščice na vrhu/dnu (obrnjene)
                 ctx.beginPath();
-                ctx.moveTo(lensX - 5, axisY - 65); ctx.lineTo(lensX, axisY - 55); ctx.lineTo(lensX + 5, axisY - 65);
-                ctx.moveTo(lensX - 5, axisY + 65); ctx.lineTo(lensX, axisY + 55); ctx.lineTo(lensX + 5, axisY + 65);
+                ctx.moveTo(lensX, axisY-42);
+                ctx.lineTo(lensX, axisY+42);
                 ctx.stroke();
+                // notranje črtice
+                ctx.beginPath();
+                ctx.ellipse(lensX, axisY, 4, 30, 0, 0, Math.PI*2);
+                ctx.fillStyle = '#ffffffb0';
+                ctx.fill();
             }
             // označitev optičnega središča
             ctx.beginPath();
@@ -512,138 +539,136 @@
             ctx.restore();
         }
         
-        // Risanje treh glavnih žarkov
+        // risanje dveh žarkov: 1) vzporedni žarek -> gre skozi gorišče (ali navidezno iz gorišča)
+        // 2) središčni žarek (skozi optično središče)
         function drawRays() {
-            if (!validImage) return;
-
-            const objX = lensX - objectDistance;
-            const objY = axisY - objectHeight;
-            const imgX = lensX + s_i;
-            const imgY = axisY - (imageInverted ? -imageHeight : imageHeight);
-            const isVirtual = s_i < 0;
-
-            const f_abs = focalLenAbs;
-            const F1 = { x: lensX - f_abs, y: axisY }; // Gorišče na levi
-            const F2 = { x: lensX + f_abs, y: axisY }; // Gorišče na desni
-
+            if(!validImage) return;
+            // koordinate object tip
+            let objX = lensX - objectDistance;
+            let objTip = { x: objX, y: axisY - objectHeight };
+            // koordinate image tip (če obstaja)
+            let imgX = lensX + s_i;
+            let imgTipY = axisY - (imageInverted ? -imageHeight : imageHeight);
+            let isVirtual = (s_i < 0) || (!isConvex);
+            
+            // 1. VZPOREDNI ŽAREK: od vrha predmeta vodoravno do leče, nato lom skozi gorišče (konveksna) / navidez od gorišča (konkavna)
+            // paralelni vpad: od (objTip.x, objTip.y) do (lensX, objTip.y)
+            let parallelIncidentEnd = { x: lensX, y: objTip.y };
+            // izračunamo lomljeni žarek: za konveksno: pot skozi desno gorišče (F_right)
+            // za konkavno: lomljeni žarek se širi, kot da prihaja iz levega gorišča (F_left)
+            let absF = focalLenAbs;
+            let focalRight = { x: lensX + absF, y: axisY };
+            let focalLeft = { x: lensX - absF, y: axisY };
+            
             ctx.save();
-            ctx.lineWidth = 1.5;
-
-            // --- 1. VZPOREDNI ŽAREK (vzporedno z osjo -> skozi gorišče) ---
-            ctx.strokeStyle = '#e67e22'; // oranžna
-            // Vpadni del
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#e6752e';
+            ctx.fillStyle = '#e6752e';
+            ctx.setLineDash([]);
+            // nariši prvi segment (vpadni)
             ctx.beginPath();
-            ctx.moveTo(objX, objY);
-            ctx.lineTo(lensX, objY);
+            ctx.moveTo(objTip.x, objTip.y);
+            ctx.lineTo(parallelIncidentEnd.x, parallelIncidentEnd.y);
             ctx.stroke();
-            // Lomljeni del
-            ctx.beginPath();
-            ctx.moveTo(lensX, objY);
-            if (isConvex) {
-                // Konveksna: skozi gorišče na desni
-                const dx = F2.x - lensX;
-                const dy = F2.y - objY;
-                ctx.lineTo(lensX + dx * 2, objY + dy * 2);
-            } else {
-                // Konkavna: navidezno iz gorišča na levi
-                const dx = lensX - F1.x;
-                const dy = objY - F1.y;
-                ctx.lineTo(lensX + dx * 2, objY + dy * 2);
-                // Navidezni podaljšek nazaj
-                ctx.setLineDash([5, 5]);
+            
+            // lomljeni del
+            if(isConvex) {
+                // žarek gre skozi desno gorišče (realno)
                 ctx.beginPath();
-                ctx.moveTo(lensX, objY);
-                ctx.lineTo(F1.x, F1.y);
+                ctx.moveTo(lensX, objTip.y);
+                ctx.lineTo(focalRight.x, focalRight.y);
                 ctx.stroke();
-                ctx.setLineDash([]);
-            }
-            ctx.stroke();
-            // Podaljšek do virtualne slike (če je potrebna)
-            if (isVirtual) {
-                ctx.setLineDash([5, 5]);
+                // če slika realna, podaljšek do slike? Preprosto prikažemo do gorišča, ampak žarek se nadaljuje proti sliki.
+                // Dodamo pikčasto črto od gorišča proti sliki (za ilustracijo, da pride v sliko)
+                if(!isVirtual && imgX > lensX && Math.abs(imgX - focalRight.x) < 300){
+                    ctx.setLineDash([6, 8]);
+                    ctx.beginPath();
+                    ctx.moveTo(focalRight.x, focalRight.y);
+                    ctx.lineTo(imgX, imgTipY);
+                    ctx.stroke();
+                } else if(isVirtual && s_i < 0){
+                    // virtualna slika: podaljšek nazaj
+                    ctx.setLineDash([6, 6]);
+                    ctx.beginPath();
+                    ctx.moveTo(lensX, objTip.y);
+                    let dirX = focalRight.x - lensX;
+                    let dirY = focalRight.y - objTip.y;
+                    let len = 120;
+                    let extendedX = lensX + dirX*1.5;
+                    let extendedY = objTip.y + dirY*1.5;
+                    ctx.lineTo(extendedX, extendedY);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(extendedX, extendedY);
+                    ctx.lineTo(imgX, imgTipY);
+                    ctx.stroke();
+                }
+            } 
+            else { // konkavna
+                // vzporedni žarek se lomi tako, da se zdi, da prihaja iz levega gorišča
                 ctx.beginPath();
-                ctx.moveTo(lensX, objY);
-                ctx.lineTo(imgX, imgY);
+                ctx.moveTo(lensX, objTip.y);
+                // smer od lečne točke proti navideznemu izvoru (focalLeft)
+                let dx = focalLeft.x - lensX;
+                let dy = focalLeft.y - objTip.y;
+                let ex = lensX + dx*1.6;
+                let ey = objTip.y + dy*1.6;
+                ctx.lineTo(ex, ey);
                 ctx.stroke();
-                ctx.setLineDash([]);
+                ctx.setLineDash([6, 6]);
+                ctx.beginPath();
+                ctx.moveTo(ex, ey);
+                ctx.lineTo(imgX, imgTipY);
+                ctx.stroke();
             }
-
-            // --- 2. SREDIŠČNI ŽAREK (skozi središče leče -> se ne lomi) ---
-            ctx.strokeStyle = '#3498db'; // modra
+            
+            // 2. SREDIŠČNI ŽAREK: gre nezlomljeno skozi optično središče (lensX, axisY)
+            ctx.setLineDash([]);
+            ctx.strokeStyle = '#2c7da0';
+            ctx.lineWidth = 2;
+            // od vrha predmeta do centra leče
             ctx.beginPath();
-            ctx.moveTo(objX, objY);
-            const dx_c = lensX - objX;
-            const dy_c = axisY - objY;
-            ctx.lineTo(objX + dx_c * 2.5, objY + dy_c * 2.5);
+            ctx.moveTo(objTip.x, objTip.y);
+            ctx.lineTo(lensX, axisY);
             ctx.stroke();
-            // Podaljšek nazaj za virtualno sliko
-            if (isVirtual) {
-                ctx.setLineDash([5, 5]);
+            // nadaljevanje skozi lečo v isti smeri
+            let dirVecX = lensX - objTip.x;
+            let dirVecY = axisY - objTip.y;
+            let norm = Math.hypot(dirVecX, dirVecY);
+            if(norm > 0.01){
+                let unitX = dirVecX / norm;
+                let unitY = dirVecY / norm;
+                let lengthOut = 280;
+                let outEndX = lensX + unitX * lengthOut;
+                let outEndY = axisY + unitY * lengthOut;
                 ctx.beginPath();
                 ctx.moveTo(lensX, axisY);
-                ctx.lineTo(imgX, imgY);
+                ctx.lineTo(outEndX, outEndY);
                 ctx.stroke();
-                ctx.setLineDash([]);
-            }
-
-            // --- 3. GORIŠČNI ŽAREK (skozi gorišče -> vzporedno z osjo) ---
-            ctx.strokeStyle = '#9b59b6'; // vijolična
-            if (isConvex) {
-                // Konveksna: skozi gorišče na levi do leče
-                const dx = lensX - F1.x;
-                const dy = axisY - F1.y;
-                // Presek z lečo: premica skozi (objX, objY) in (F1.x, F1.y) -> x = lensX
-                // (y - objY) / (x - objX) = (axisY - objY) / (F1.x - objX)
-                const y_at_lens = objY + (axisY - objY) * (lensX - objX) / (F1.x - objX);
                 
-                ctx.beginPath();
-                ctx.moveTo(objX, objY);
-                ctx.lineTo(lensX, y_at_lens);
-                ctx.stroke();
-                // Lomljeni del
-                ctx.beginPath();
-                ctx.moveTo(lensX, y_at_lens);
-                ctx.lineTo(width, y_at_lens);
-                ctx.stroke();
-                // Podaljšek za virtualno sliko
-                if (isVirtual) {
+                // povežemo z virtualno/realno sliko
+                if(!isVirtual && s_i > 0 && Math.abs(imgX - lensX) < 500){
                     ctx.setLineDash([5, 5]);
                     ctx.beginPath();
-                    ctx.moveTo(lensX, y_at_lens);
-                    ctx.lineTo(imgX, imgY);
+                    ctx.moveTo(outEndX, outEndY);
+                    ctx.lineTo(imgX, imgTipY);
                     ctx.stroke();
-                    ctx.setLineDash([]);
-                }
-            } else {
-                // Konkavna: usmerjen proti gorišču na desni
-                const y_at_lens = objY + (axisY - objY) * (lensX - objX) / (F2.x - objX);
-                ctx.beginPath();
-                ctx.moveTo(objX, objY);
-                ctx.lineTo(lensX, y_at_lens);
-                ctx.stroke();
-                // Navidezno proti F2
-                ctx.setLineDash([5, 5]);
-                ctx.beginPath();
-                ctx.moveTo(lensX, y_at_lens);
-                ctx.lineTo(F2.x, F2.y);
-                ctx.stroke();
-                ctx.setLineDash([]);
-                // Lomljeni del (vzporedno)
-                ctx.beginPath();
-                ctx.moveTo(lensX, y_at_lens);
-                ctx.lineTo(width, y_at_lens);
-                ctx.stroke();
-                // Podaljšek za virtualno sliko
-                if (isVirtual) {
-                    ctx.setLineDash([5, 5]);
+                } else if(isVirtual && s_i < 0){
+                    // virtualna slika: podaljšek vzvratno
+                    ctx.setLineDash([6, 6]);
                     ctx.beginPath();
-                    ctx.moveTo(lensX, y_at_lens);
-                    ctx.lineTo(imgX, imgY);
+                    ctx.moveTo(lensX, axisY);
+                    let backX = lensX - unitX * 180;
+                    let backY = axisY - unitY * 180;
+                    ctx.lineTo(backX, backY);
                     ctx.stroke();
-                    ctx.setLineDash([]);
+                    ctx.beginPath();
+                    ctx.moveTo(backX, backY);
+                    ctx.lineTo(imgX, imgTipY);
+                    ctx.stroke();
                 }
             }
-
+            ctx.setLineDash([]);
             ctx.restore();
         }
         
