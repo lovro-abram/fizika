@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nihala</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+        }
+        .nav-link {
+            transition: all 0.2s;
+        }
+        .nav-link:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-800">
+
+    <!-- Navigacijska vrstica -->
+    <nav class="bg-slate-900 text-slate-300 py-3 px-6 shadow-sm border-b border-slate-800">
+        <div class="container mx-auto flex flex-wrap gap-4 items-center justify-center lg:justify-start">
+            <a href="Preslikava_cez_leco.html" class="nav-link px-3 py-1 rounded-md text-sm font-medium">Preslikava čez lečo</a>
+            <a href="Lomni_kot_in_popolni_odboj.html" class="nav-link px-3 py-1 rounded-md text-sm font-medium">Lomni kot in popolni odboj</a>
+            <a href="Nihala.html" class="nav-link px-3 py-1 rounded-md text-sm font-medium text-white bg-[#1138cc]">Nihala</a>
+            <a href="#" class="nav-link px-3 py-1 rounded-md text-sm font-medium">Valovanje</a>
+            <a href="#" class="nav-link px-3 py-1 rounded-md text-sm font-medium">Tabela s fizikalnimi količinami</a>
+        </div>
+    </nav>
+
+    <!-- Glava -->
+    <header class="bg-[#1138cc] text-white p-6 shadow-md">
+        <div class="container mx-auto">
+            <h1 class="text-3xl font-extrabold tracking-tight">Nihala</h1>
+            <p class="text-blue-100 text-sm mt-1 opacity-90">Pregled različnih vrst fizikalnih nihal</p>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            <!-- Nitno nihalo -->
+            <div class="card p-8 border border-slate-100 flex flex-col">
+                <h2 class="text-2xl font-bold mb-4 text-[#1138cc]">Nitno nihalo</h2>
+                <p class="text-slate-600 mb-6 flex-grow">
+                    Nitno nihalo je idealiziran fizikalni sistem, sestavljen iz neznatne mase, obešene na neraztegljivi vrvici brez mase. Pri majhnih odklonih se giblje harmonično.
+                </p>
+                <div class="bg-slate-50 p-4 rounded-lg mb-6 text-center">
+                    <code class="text-lg font-bold text-slate-800">T = 2π√(l/g)</code>
+                </div>
+                <button class="w-full bg-[#1138cc] hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-colors">
+                    Odpri simulacijo
+                </button>
+            </div>
+
+            <!-- Vzmetno nihalo -->
+            <div class="card p-8 border border-slate-100 flex flex-col">
+                <h2 class="text-2xl font-bold mb-4 text-[#1138cc]">Vzmetno nihalo</h2>
+                <p class="text-slate-600 mb-6 flex-grow">
+                    Vzmetno nihalo sestavlja telo z maso, pritrjeno na prožno vzmet. Nihanje povzroča povratna sila vzmeti, ki je sorazmerna z odmikom iz ravnovesne lege.
+                </p>
+                <div class="bg-slate-50 p-4 rounded-lg mb-6 text-center">
+                    <code class="text-lg font-bold text-slate-800">T = 2π√(m/k)</code>
+                </div>
+                <button class="w-full bg-[#1138cc] hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-colors">
+                    Odpri simulacijo
+                </button>
+            </div>
+
+            <!-- Harmonično nihalo -->
+            <div class="card p-8 border border-slate-100 flex flex-col">
+                <h2 class="text-2xl font-bold mb-4 text-[#1138cc]">Harmonično nihalo</h2>
+                <p class="text-slate-600 mb-6 flex-grow">
+                    Harmonično nihanje je gibanje, pri katerem je sila, ki vrača telo v ravnovesno lego, premo sorazmerna z odmikom od te lege in kaže proti njej.
+                </p>
+                <div class="bg-slate-50 p-4 rounded-lg mb-6 text-center">
+                    <code class="text-lg font-bold text-slate-800">F = -kx</code>
+                </div>
+                <button class="w-full bg-[#1138cc] hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-colors">
+                    Odpri simulacijo
+                </button>
+            </div>
+
+            <!-- Fizikalno nihalo -->
+            <div class="card p-8 border border-slate-100 flex flex-col">
+                <h2 class="text-2xl font-bold mb-4 text-[#1138cc]">Fizikalno nihalo</h2>
+                <p class="text-slate-600 mb-6 flex-grow">
+                    Fizikalno nihalo je poljubno togo telo, ki lahko niha okoli vodoravne osi, ki ne poteka skozi njegovo težišče.
+                </p>
+                <div class="bg-slate-50 p-4 rounded-lg mb-6 text-center">
+                    <code class="text-lg font-bold text-slate-800">T = 2π√(I/mgd)</code>
+                </div>
+                <button class="w-full bg-[#1138cc] hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-colors">
+                    Odpri simulacijo
+                </button>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="bg-slate-900 text-slate-500 py-8 px-6 text-center text-sm border-t border-slate-800">
+        <div class="container mx-auto">
+            <p>&copy; 2024 Fizikalne simulacije. Vse pravice pridržane.</p>
+        </div>
+    </footer>
+
+</body>
+</html>
