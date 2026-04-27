@@ -299,7 +299,7 @@
             ctx.setLineDash([]);
             
             // Oznaka vpadnica
-            drawLabel('Vpadna pravokotnica', state.centerX + 10, 30, '#475569');
+            drawLabel('Vpadna pravokotnica', state.centerX + 10, 30, '#475569', true);
 
             const rayLen = Math.min(canvas.width, canvas.height) * 0.4;
 
@@ -307,23 +307,25 @@
             const xIn = state.centerX - Math.sin(alphaRad) * rayLen;
             const yIn = state.centerY - Math.cos(alphaRad) * rayLen;
             drawRay(xIn, yIn, state.centerX, state.centerY, '#ef4444');
-            drawLabel('Vpadni žarek', xIn + 10, yIn - 10, '#475569');
+            drawLabel('Vpadni žarek', xIn + 10, yIn - 10, '#475569', true);
 
             // 5. Laser
-            drawLaser(xIn, yIn, alphaRad);
+            drawLaser(xIn, yIn, -alphaRad);
 
             // 6. Odbiti žarek
-            const xRef = state.centerX + Math.sin(alphaRad) * rayLen;
-            const yRef = state.centerY - Math.cos(alphaRad) * rayLen;
-            drawRay(state.centerX, state.centerY, xRef, yRef, '#f59e0b', state.isTotalReflection ? 3 : 1);
-            drawLabel('Odbiti žarek', xRef - 70, yRef - 10, '#475569');
+            if (n1 !== n2) {
+                const xRef = state.centerX + Math.sin(alphaRad) * rayLen;
+                const yRef = state.centerY - Math.cos(alphaRad) * rayLen;
+                drawRay(state.centerX, state.centerY, xRef, yRef, '#f59e0b', state.isTotalReflection ? 3 : 1);
+                drawLabel('Odbiti žarek', xRef - 70, yRef - 10, '#475569', true);
+            }
 
             // 7. Lomljeni žarek
             if (!state.isTotalReflection) {
                 const xOut = state.centerX + Math.sin(betaRad) * rayLen;
                 const yOut = state.centerY + Math.cos(betaRad) * rayLen;
                 drawRay(state.centerX, state.centerY, xOut, yOut, '#10b981', 3);
-                drawLabel('Lomljeni žarek', xOut + 10, yOut - 10, '#475569');
+                drawLabel('Lomljeni žarek', xOut + 10, yOut - 10, '#475569', true);
                 
                 drawAngleArc(state.centerX, state.centerY, 40, Math.PI/2, Math.PI/2 - betaRad, '#10b981');
                 ctx.fillStyle = '#10b981';
@@ -338,14 +340,15 @@
             }
 
             // Kotni lok alfa
-            drawAngleArc(state.centerX, state.centerY, 50, -Math.PI/2, -Math.PI/2 + alphaRad, '#ef4444');
+            drawAngleArc(state.centerX, state.centerY, 50, -Math.PI/2, -Math.PI/2 - alphaRad, '#ef4444');
             ctx.fillStyle = '#ef4444';
             ctx.font = 'bold 14px Inter';
             ctx.fillText('α', state.centerX - 25, state.centerY - 60);
 
             // Oznake snovi
-            drawLabel('n₁ = ' + n1.toFixed(2), 20, state.centerY - 20, '#475569', true);
-            drawLabel('n₂ = ' + n2.toFixed(2), 20, state.centerY + 30, '#475569', true);
+            drawLabel('Zgornja snov (n₁ = ' + n1.toFixed(2) + ')', 20, state.centerY - 20, '#475569', true);
+            drawLabel('Spodnja snov (n₂ = ' + n2.toFixed(2) + ')', 20, state.centerY + 30, '#475569', true);
+            drawLabel('Meja med snovema', canvas.width - 150, state.centerY - 10, '#475569', true);
         }
 
         function drawLaser(x, y, angle) {
