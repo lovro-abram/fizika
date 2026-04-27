@@ -144,7 +144,7 @@
                             </div>
                         </div>
                         <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 border border-slate-100">
-                            <span class="text-slate-500 font-medium text-sm">Mejni kot popolnega odboja:</span> 
+                            <span class="text-slate-500 font-medium text-sm">Mejni kot popolnega odboja: </span> 
                             <span id="propCritical" class="font-bold text-slate-900 text-sm">-</span>
                         </div>
                     </div>
@@ -288,7 +288,7 @@
             const betaRad = Math.asin(sinBeta);
 
             const criticalAngleVal = n1 > n2 ? (Math.asin(n2 / n1) * 180 / Math.PI) : null;
-            propCritical.innerText = criticalAngleVal ? criticalAngleVal.toFixed(1) + '°' : 'Ni mejnega kota';
+            propCritical.innerText = criticalAngleVal ? criticalAngleVal.toFixed(1) + '°' : '/;
 
             if (state.isTotalReflection) {
                 betaInput.value = "";
