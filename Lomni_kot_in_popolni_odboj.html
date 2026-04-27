@@ -288,7 +288,7 @@
             const betaRad = Math.asin(sinBeta);
 
             const criticalAngleVal = n1 > n2 ? (Math.asin(n2 / n1) * 180 / Math.PI) : null;
-            propCritical.innerText = criticalAngleVal ? criticalAngleVal.toFixed(1) + '°' : '-;
+            propCritical.innerText = criticalAngleVal ? criticalAngleVal.toFixed(1) + '°' : '-';
 
             if (state.isTotalReflection) {
                 betaInput.value = "";
