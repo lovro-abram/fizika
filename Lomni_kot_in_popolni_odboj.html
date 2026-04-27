@@ -138,7 +138,10 @@
                     <div id="outputProps" class="space-y-3">
                         <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 border border-slate-100">
                             <span class="text-slate-500 font-medium text-sm">Lomni kot (β):</span> 
-                            <span id="propBeta" class="font-bold text-slate-900 text-sm">-</span>
+                            <div class="flex items-center gap-1">
+                                <input type="number" id="betaInput" min="0" max="89" step="0.1" value="0" class="w-16 p-1 text-right font-bold text-[#1138cc] border border-slate-200 rounded outline-none focus:border-blue-500">
+                                <span class="font-bold text-[#1138cc]">°</span>
+                            </div>
                         </div>
                         <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 border border-slate-100">
                             <span class="text-slate-500 font-medium text-sm">Mejni kot popolnega odboja:</span> 
@@ -165,7 +168,7 @@
         const angleRange = document.getElementById('angleRange');
         const angleInput = document.getElementById('angleInput');
 
-        const propBeta = document.getElementById('propBeta');
+        const betaInput = document.getElementById('betaInput');
         const propCritical = document.getElementById('propCritical');
 
         let state = {
@@ -229,6 +232,24 @@
             draw();
         };
 
+        betaInput.oninput = (e) => {
+            let beta = parseFloat(e.target.value);
+            if (isNaN(beta)) return;
+            if (beta < 0) beta = 0;
+            if (beta > 89.9) beta = 89.9;
+
+            const betaRad = (beta * Math.PI) / 180;
+            const sinAlpha = (state.n2 / state.n1) * Math.sin(betaRad);
+
+            if (sinAlpha <= 1) {
+                const alphaRad = Math.asin(sinAlpha);
+                state.alpha = (alphaRad * 180) / Math.PI;
+                angleInput.value = Math.round(state.alpha);
+                angleRange.value = Math.round(state.alpha);
+                draw();
+            }
+        };
+
         canvas.onclick = (e) => {
             const rect = canvas.getBoundingClientRect();
             const mx = e.clientX - rect.left;
@@ -270,9 +291,15 @@
             propCritical.innerText = criticalAngleVal ? criticalAngleVal.toFixed(1) + '°' : 'Ni mejnega kota';
 
             if (state.isTotalReflection) {
-                propBeta.innerText = "Ni loma";
+                betaInput.value = "";
+                betaInput.disabled = true;
+                betaInput.placeholder = "N/A";
             } else {
-                propBeta.innerText = (betaRad * 180 / Math.PI).toFixed(1) + '°';
+                betaInput.disabled = false;
+                betaInput.placeholder = "";
+                if (document.activeElement !== betaInput) {
+                    betaInput.value = (betaRad * 180 / Math.PI).toFixed(1);
+                }
             }
 
             // 1. Ozadje snovi
@@ -318,6 +345,12 @@
                 const yRef = state.centerY - Math.cos(alphaRad) * rayLen;
                 drawRay(state.centerX, state.centerY, xRef, yRef, '#f59e0b', state.isTotalReflection ? 3 : 1);
                 drawLabel('Odbiti žarek', xRef - 70, yRef - 10, '#475569', true);
+
+                // Kotni lok gama (odbojni kot)
+                drawAngleArc(state.centerX, state.centerY, 50, -Math.PI/2, -Math.PI/2 + alphaRad, '#f59e0b');
+                ctx.fillStyle = '#f59e0b';
+                ctx.font = 'bold 14px Inter';
+                ctx.fillText('γ', state.centerX + 15, state.centerY - 60);
             }
 
             // 7. Lomljeni žarek
