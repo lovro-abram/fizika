@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktivna simulacija leč</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+        }
+        canvas {
+            touch-action: none;
+            background-color: #ffffff;
+            cursor: crosshair;
+        }
+        .control-panel, .canvas-container {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        #tooltip {
+            position: absolute;
+            pointer-events: none;
+            background: #000000;
+            color: white;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+            transform: translate(-50%, -120%);
+            white-space: nowrap;
+            font-weight: 600;
+        }
+        input[type="range"] {
+            accent-color: #1138cc;
+        }
+        .nav-link {
+            transition: all 0.2s;
+        }
+        .nav-link:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-800">
+
+    <div id="tooltip">Opis elementa</div>
+
+    <!-- Navigacijska vrstica -->
+    <nav class="bg-slate-900 text-slate-300 py-3 px-6 shadow-sm border-b border-slate-800">
+        <div class="container mx-auto flex flex-wrap gap-4 items-center justify-center lg:justify-start">
+            <a href="Preslikava_cez_leco.html" class="nav-link px-3 py-1 rounded-md text-sm font-medium text-white bg-[#1138cc]">Preslikava čez lečo</a>
+            <a href="Lomni_kot_in_popolni_odboj.html" class="nav-link px-3 py-1 rounded-md text-sm font-medium">Lomni kot in popolni odboj</a>
+            <a href="#" class="nav-link px-3 py-1 rounded-md text-sm font-medium">Nihala</a>
+            <a href="#" class="nav-link px-3 py-1 rounded-md text-sm font-medium">Valovanje</a>
+            <a href="#" class="nav-link px-3 py-1 rounded-md text-sm font-medium">Tabela s fizikalnimi količinami</a>
+        </div>
+    </nav>
+
+    <!-- Glava -->
+    <header class="bg-[#1138cc] text-white p-6 shadow-md">
+        <div class="container mx-auto">
+            <h1 class="text-3xl font-extrabold tracking-tight">Optična simulacija leč</h1>
+            <p class="text-blue-100 text-sm mt-1 opacity-90">Interaktivno učenje fizike</p>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto p-6 flex flex-col lg:flex-row gap-8">
+        
+        <!-- Območje simulacije -->
+        <div class="flex-grow canvas-container overflow-hidden border border-slate-200 relative flex flex-col">
+            <canvas id="opticsCanvas" class="w-full h-full min-h-[550px]"></canvas>
+        </div>
+
+        <!-- Stranska vrstica z nastavitvami -->
+        <aside class="w-full lg:w-96 flex flex-col gap-6">
+            <div class="control-panel p-8 border border-slate-100">
+                <h2 class="text-xl font-bold mb-6 text-[#1138cc] border-b pb-3">Nastavitve</h2>
+                
+                <!-- Vrsta leče -->
+                <div class="mb-8">
+                    <label class="block text-sm font-semibold text-slate-600 mb-3 tracking-wider">Vrsta leče</label>
+                    <div class="flex p-1 bg-slate-100 rounded-xl" role="group">
+                        <button id="btnConvex" class="flex-1 px-4 py-2.5 text-sm font-bold rounded-lg transition-all duration-200 bg-[#1138cc] text-white shadow-sm">
+                            Zbirna
+                        </button>
+                        <button id="btnConcave" class="flex-1 px-4 py-2.5 text-sm font-bold rounded-lg transition-all duration-200 text-slate-600 hover:text-[#1138cc]">
+                            Razpršilna
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Nastavitve predmeta -->
+                <div class="space-y-6">
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <label class="text-sm font-semibold text-slate-600 tracking-wider">Oddaljenost predmeta (a)</label>
+                        </div>
+                        <input type="range" id="objDistRange" min="20" max="600" value="240" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <label class="text-sm font-semibold text-slate-600 tracking-wider">Velikost predmeta (p)</label>
+                        </div>
+                        <input type="range" id="objHeightRange" min="40" max="140" value="70" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
+
+                <!-- Lastnosti slike -->
+                <div class="mt-10 pt-6 border-t border-slate-100">
+                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Lastnosti slike</h3>
+                    <div id="imageProperties" class="space-y-3">
+                        <div id="standardProps" class="space-y-2">
+                            <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 border border-slate-100">
+                                <span class="text-slate-500 font-medium text-sm">Vrsta:</span> 
+                                <span id="propType" class="font-bold text-slate-900 text-sm">-</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 border border-slate-100">
+                                <span class="text-slate-500 font-medium text-sm">Orientacija:</span> 
+                                <span id="propOrient" class="font-bold text-slate-900 text-sm">-</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 border border-slate-100">
+                                <span class="text-slate-500 font-medium text-sm">Velikost:</span> 
+                                <span id="propSize" class="font-bold text-slate-900 text-sm">-</span>
+                            </div>
+                        </div>
+                        <div id="infinityMsg" class="hidden text-center py-4 text-[#1138cc] font-bold bg-blue-50 border border-blue-100 rounded-xl">
+                            Slika je v neskončnosti in je neskončno velika
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('opticsCanvas');
+        const ctx = canvas.getContext('2d');
+        const tooltip = document.getElementById('tooltip');
+        
+        const objDistRange = document.getElementById('objDistRange');
+        const objHeightRange = document.getElementById('objHeightRange');
+        const btnConvex = document.getElementById('btnConvex');
+        const btnConcave = document.getElementById('btnConcave');
+
+        const propType = document.getElementById('propType');
+        const propOrient = document.getElementById('propOrient');
+        const propSize = document.getElementById('propSize');
+        const standardProps = document.getElementById('standardProps');
+        const infinityMsg = document.getElementById('infinityMsg');
+
+        let state = {
+            isConvex: true,
+            f: 120, 
+            u: 240, 
+            h: 70,
+            centerX: 0,
+            centerY: 0,
+            imageX: 0,
+            imageY: 0
+        };
+
+        function resize() {
+            const rect = canvas.parentNode.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            state.centerX = canvas.width / 2;
+            state.centerY = canvas.height / 2;
+            draw();
+        }
+
+        window.addEventListener('resize', resize);
+        setTimeout(resize, 0);
+
+        objDistRange.oninput = (e) => { state.u = parseInt(e.target.value); draw(); };
+        objHeightRange.oninput = (e) => { state.h = parseInt(e.target.value); draw(); };
+
+        btnConvex.onclick = () => {
+            state.isConvex = true;
+            btnConvex.className = "flex-1 px-4 py-2.5 text-sm font-bold rounded-lg bg-[#1138cc] text-white shadow-sm";
+            btnConcave.className = "flex-1 px-4 py-2.5 text-sm font-bold rounded-lg text-slate-600 hover:text-[#1138cc]";
+            draw();
+        };
+
+        btnConcave.onclick = () => {
+            state.isConvex = false;
+            btnConcave.className = "flex-1 px-4 py-2.5 text-sm font-bold rounded-lg bg-[#1138cc] text-white shadow-sm";
+            btnConvex.className = "flex-1 px-4 py-2.5 text-sm font-bold rounded-lg text-slate-600 hover:text-[#1138cc]";
+            draw();
+        };
+
+        canvas.onclick = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+
+            let hit = "";
+
+            const points = [
+                {x: state.centerX - state.f, label: "Gorišče (F)"},
+                {x: state.centerX - 2*state.f, label: "Dvakratna goriščna razdalja (2F)"},
+                {x: state.centerX + state.f, label: "Gorišče (F')"},
+                {x: state.centerX + 2*state.f, label: "Dvakratna goriščna razdalja (2F')"}
+            ];
+
+            for (let p of points) {
+                if (Math.abs(mx - p.x) < 15 && Math.abs(my - state.centerY) < 15) {
+                    hit = p.label;
+                    break;
+                }
+            }
+
+            if (!hit) {
+                if (Math.abs(my - state.centerY) < 10) {
+                    hit = "Optična os";
+                } else if (Math.abs(mx - state.centerX) < 30 && Math.abs(my - state.centerY) < 170) {
+                    hit = state.isConvex ? "Zbirna leča" : "Razpršilna leča";
+                } else if (Math.abs(mx - (state.centerX - state.u)) < 25) {
+                    hit = "Predmet";
+                } else if (Math.abs(mx - state.imageX) < 25 && isFinite(state.imageX)) {
+                    hit = "Slika predmeta";
+                } else if (checkRayHit(mx, my)) {
+                    hit = "Žarek svetlobe";
+                }
+            }
+
+            if (hit) {
+                tooltip.innerText = hit;
+                tooltip.style.left = e.clientX + 'px';
+                tooltip.style.top = e.clientY + 'px';
+                tooltip.style.display = 'block';
+            } else {
+                tooltip.style.display = 'none';
+            }
+        };
+
+        function checkRayHit(mx, my) {
+            const distGreen = Math.abs((state.centerY - (state.centerY - state.h)) * (mx - state.centerX) - 
+                              (state.centerX - (state.centerX - state.u)) * (my - state.centerY)) / 
+                              Math.sqrt(Math.pow(state.centerY - (state.centerY - state.h), 2) + Math.pow(state.centerX - (state.centerX - state.u), 2));
+            if (distGreen < 5) return true;
+            if (mx < state.centerX && Math.abs(my - (state.centerY - state.h)) < 5) return true;
+            return false;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const f_val = state.isConvex ? state.f : -state.f;
+            const u = state.u;
+            const h = state.h;
+            
+            const isInInfinity = Math.abs(u - f_val) < 3 && state.isConvex;
+            const v = 1 / (1/f_val - 1/u);
+            const hi = -(v/u) * h;
+            
+            state.imageX = state.centerX + v;
+            state.imageY = state.centerY - hi;
+
+            updateProperties(v, hi, h, isInInfinity);
+
+            // 1. Os
+            ctx.beginPath();
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([10, 5]);
+            ctx.moveTo(0, state.centerY);
+            ctx.lineTo(canvas.width, state.centerY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 2. Gorišča
+            drawPoint(state.centerX - state.f, state.centerY, 'F');
+            drawPoint(state.centerX - 2 * state.f, state.centerY, '2F');
+            drawPoint(state.centerX + state.f, state.centerY, "F'");
+            drawPoint(state.centerX + 2 * state.f, state.centerY, "2F'");
+
+            // 3. Leča
+            drawLens(state.centerX, state.centerY, state.isConvex);
+
+            // 4. Predmet
+            drawObject(state.centerX - u, state.centerY, state.centerX - u, state.centerY - h, '#1138cc', 'Predmet', 3);
+
+            // 5. Žarki
+            const rayWidth = 1.2;
+            if (!isInInfinity && isFinite(v)) {
+                // Žarek 1: Vzporedni
+                ctx.lineWidth = rayWidth;
+                ctx.beginPath();
+                ctx.strokeStyle = '#ff0033';
+                ctx.moveTo(state.centerX - u, state.centerY - h);
+                ctx.lineTo(state.centerX, state.centerY - h);
+                
+                if (state.isConvex) {
+                    extendLine(ctx, state.centerX, state.centerY - h, state.centerX + state.f, state.centerY, 2000);
+                    ctx.stroke();
+                    if (v < 0) {
+                        ctx.beginPath();
+                        ctx.setLineDash([5, 5]);
+                        extendLine(ctx, state.centerX + state.f, state.centerY, state.centerX, state.centerY - h, 2000);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+                } else {
+                    extendLine(ctx, state.centerX - state.f, state.centerY, state.centerX, state.centerY - h, 2000);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.setLineDash([5, 5]);
+                    ctx.moveTo(state.centerX, state.centerY - h);
+                    ctx.lineTo(state.centerX - state.f, state.centerY);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // Žarek 2: Središčni
+                ctx.beginPath();
+                ctx.strokeStyle = '#00cc66';
+                extendLine(ctx, state.centerX - u, state.centerY - h, state.centerX, state.centerY, 2000);
+                ctx.stroke();
+                
+                if (v < 0) {
+                    ctx.beginPath();
+                    ctx.setLineDash([5, 5]);
+                    extendLine(ctx, state.centerX, state.centerY, state.centerX - u, state.centerY - h, 2000);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // 6. Slika predmeta
+                const isReal = v > 0;
+                drawObject(state.imageX, state.centerY, state.imageX, state.imageY, isReal ? '#9900ff' : '#cc33ff', isReal ? 'Realna slika' : 'Navidezna slika', 3, !isReal);
+            } else if (isInInfinity) {
+                ctx.lineWidth = rayWidth;
+                ctx.strokeStyle = '#ff0033';
+                ctx.beginPath();
+                ctx.moveTo(state.centerX - u, state.centerY - h);
+                ctx.lineTo(state.centerX, state.centerY - h);
+                extendLine(ctx, state.centerX, state.centerY - h, state.centerX + state.f, state.centerY, 2000);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#00cc66';
+                ctx.beginPath();
+                extendLine(ctx, state.centerX - u, state.centerY - h, state.centerX, state.centerY, 2000);
+                ctx.stroke();
+            }
+        }
+
+        function updateProperties(v, hi, h, isInInfinity) {
+            if (isInInfinity) {
+                standardProps.classList.add('hidden');
+                infinityMsg.classList.remove('hidden');
+                return;
+            }
+            standardProps.classList.remove('hidden');
+            infinityMsg.classList.add('hidden');
+
+            if (!isFinite(v) || h === 0) {
+                propType.innerText = "-";
+                propOrient.innerText = "-";
+                propSize.innerText = "-";
+                return;
+            }
+            propType.innerText = v > 0 ? "Realna" : "Navidezna";
+            propOrient.innerText = v > 0 ? "Obrnjena" : "Pokončna";
+            
+            const mag = Math.abs(hi / h);
+            if (Math.abs(mag - 1) < 0.05) propSize.innerText = "Enako velika";
+            else propSize.innerText = mag > 1 ? "Povečana" : "Pomanjšana";
+        }
+
+        function drawPoint(x, y, label) {
+            ctx.fillStyle = '#64748b';
+            ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.font = '600 13px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, x, y + 22);
+        }
+
+        function drawLens(x, y, convex) {
+            ctx.beginPath();
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 4;
+            const lensH = 180;
+            ctx.moveTo(x, y - lensH);
+            ctx.lineTo(x, y + lensH);
+            const arrowSize = 14;
+            if (convex) {
+                ctx.moveTo(x - arrowSize, y - lensH + arrowSize); ctx.lineTo(x, y - lensH); ctx.lineTo(x + arrowSize, y - lensH + arrowSize);
+                ctx.moveTo(x - arrowSize, y + lensH - arrowSize); ctx.lineTo(x, y + lensH); ctx.lineTo(x + arrowSize, y + lensH - arrowSize);
+            } else {
+                ctx.moveTo(x - arrowSize, y - lensH); ctx.lineTo(x, y - lensH + arrowSize); ctx.lineTo(x + arrowSize, y - lensH);
+                ctx.moveTo(x - arrowSize, y + lensH); ctx.lineTo(x, y + lensH - arrowSize); ctx.lineTo(x + arrowSize, y + lensH);
+            }
+            ctx.stroke();
+        }
+
+        function drawObject(x1, y1, x2, y2, color, label, weight, dashed = false) {
+            if (Math.abs(y2 - y1) < 1) return; // Ne rišemo, če je višina 0
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = weight;
+            if (dashed) ctx.setLineDash([6, 3]);
+            
+            ctx.moveTo(x1, y1); 
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+
+            // Puščica
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            const headLen = 14;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fillStyle = color;
+            ctx.fill();
+            
+            ctx.shadowBlur = 2;
+            ctx.shadowColor = "rgba(255,255,255,0.8)";
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '700 12px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, x1, y2 < y1 ? y2 - 20 : y2 + 30);
+            ctx.restore();
+        }
+
+        function extendLine(context, x1, y1, x2, y2, length) {
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            context.moveTo(x1, y1);
+            context.lineTo(x1 + Math.cos(angle) * length, y1 + Math.sin(angle) * length);
+        }
+
+        draw();
+    </script>
+</body>
+</html>
